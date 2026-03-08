@@ -3,24 +3,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Principal } from "@icp-sdk/core/principal";
 import { Link, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  Building2,
+  ClipboardList,
   Clock,
   Filter,
   GitBranch,
   Plus,
   Search,
   Tag,
+  Users,
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import type { Decision } from "../backend.d";
 import { DecisionCard } from "../components/DecisionCard";
 import { NewDecisionModal } from "../components/NewDecisionModal";
 import { useAppContext } from "../context/AppContext";
+import {
+  type SeedProject,
+  seedDecisionsByProject,
+  seedProjects,
+} from "../data/seedData";
 import {
   useGetProject,
   useGetProjectDecisions,
@@ -54,70 +60,24 @@ export function ProjectPage() {
     })
     .sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
 
-  const anon = {} as unknown as Principal;
-  const seedDecisions: Decision[] = [
-    {
-      id: "sd-1",
-      projectId: id,
-      title: "Adopted PostgreSQL over MongoDB for primary data store",
-      reasoning:
-        "We chose PostgreSQL because our data has strong relational properties and we need ACID compliance for financial transactions. MongoDB's eventual consistency model introduced too many edge cases in our payment flow.",
-      outcome:
-        "Reduced data inconsistency errors by 94% in the first month post-migration. Query performance improved significantly with proper indexing.",
-      tags: ["database", "architecture", "performance"],
-      importance: BigInt(5),
-      createdAt: BigInt(Date.now() - 20 * 24 * 3600 * 1000) * BigInt(1_000_000),
-      createdBy: anon,
-    },
-    {
-      id: "sd-2",
-      projectId: id,
-      title: "Implemented blue-green deployment strategy",
-      reasoning:
-        "We chose blue-green deployments to eliminate downtime during releases. Our SLA requires 99.9% uptime and we were experiencing 15-minute maintenance windows with our old rolling deployment approach.",
-      outcome:
-        "Zero-downtime deployments achieved. Rollback time reduced from 45 minutes to under 2 minutes.",
-      tags: ["devops", "deployment", "reliability"],
-      importance: BigInt(4),
-      createdAt: BigInt(Date.now() - 12 * 24 * 3600 * 1000) * BigInt(1_000_000),
-      createdBy: anon,
-    },
-    {
-      id: "sd-3",
-      projectId: id,
-      title: "Selected React Query for server state management",
-      reasoning:
-        "Redux was adding unnecessary complexity for our data-fetching patterns. React Query's cache invalidation and optimistic updates fit our use-case perfectly and reduced boilerplate by 60%.",
-      outcome:
-        "Developer velocity improved. New feature implementation time dropped from 2 days to 4 hours on average for data-heavy screens.",
-      tags: ["frontend", "architecture", "developer-experience"],
-      importance: BigInt(3),
-      createdAt: BigInt(Date.now() - 5 * 24 * 3600 * 1000) * BigInt(1_000_000),
-      createdBy: anon,
-    },
-  ];
+  const projectSeedDecisions = seedDecisionsByProject[id] || [];
 
   const displayDecisions =
     !decisionsLoading && (!decisions || decisions.length === 0)
       ? filteredDecisions.length === 0 && !search && !activeTag
-        ? seedDecisions
+        ? projectSeedDecisions
         : filteredDecisions
       : filteredDecisions;
+
+  const seedTagsForProject = Array.from(
+    new Set(projectSeedDecisions.flatMap((d) => d.tags)),
+  );
 
   const allTags =
     tags && tags.length > 0
       ? tags
       : !decisionsLoading && (!decisions || decisions.length === 0)
-        ? [
-            "database",
-            "architecture",
-            "performance",
-            "devops",
-            "deployment",
-            "reliability",
-            "frontend",
-            "developer-experience",
-          ]
+        ? seedTagsForProject
         : tags || [];
 
   if (projectLoading) {
@@ -137,15 +97,10 @@ export function ProjectPage() {
     );
   }
 
-  const displayProject = project || {
-    id,
-    name: "Platform Architecture Overhaul",
-    description:
-      "Complete re-architecture of the core platform to microservices, addressing scalability bottlenecks that emerged at 10M users.",
-    tags: ["infrastructure", "scalability", "microservices"],
-    createdAt: BigInt(Date.now() - 30 * 24 * 3600 * 1000) * BigInt(1_000_000),
-    createdBy: anon,
-  };
+  const displayProject =
+    project ||
+    (seedProjects.find((p) => p.id === id) as SeedProject | undefined) ||
+    seedProjects[0];
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -329,6 +284,127 @@ export function ProjectPage() {
               </div>
             )}
           </div>
+
+          {/* Team Members Panel */}
+          {"teamMembers" in displayProject && (
+            <div
+              className="glass-panel rounded-xl p-4 mt-4"
+              data-ocid="project.team_panel"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Users
+                  className="h-3.5 w-3.5"
+                  style={{
+                    color: "oklch(0.74 0.19 198)",
+                    filter: "drop-shadow(0 0 4px oklch(0.74 0.19 198 / 0.5))",
+                  }}
+                />
+                <span
+                  className="text-[11px] font-mono uppercase tracking-[0.18em] font-semibold"
+                  style={{ color: "oklch(0.74 0.19 198)" }}
+                >
+                  Team
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {(displayProject as SeedProject).teamMembers.map(
+                  (member, i) => (
+                    <div
+                      key={member.name}
+                      className="flex flex-col"
+                      data-ocid={`project.team.item.${i + 1}`}
+                    >
+                      <span className="text-[12px] font-semibold text-foreground leading-snug">
+                        {member.name}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        {member.role}
+                      </span>
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Client Info Panel */}
+          {"clientName" in displayProject && (
+            <div
+              className="glass-panel rounded-xl p-4 mt-4"
+              data-ocid="project.client_panel"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Building2
+                  className="h-3.5 w-3.5"
+                  style={{
+                    color: "oklch(0.74 0.19 198)",
+                    filter: "drop-shadow(0 0 4px oklch(0.74 0.19 198 / 0.5))",
+                  }}
+                />
+                <span
+                  className="text-[11px] font-mono uppercase tracking-[0.18em] font-semibold"
+                  style={{ color: "oklch(0.74 0.19 198)" }}
+                >
+                  Client
+                </span>
+              </div>
+              <p className="text-[13px] font-semibold text-foreground mb-2 leading-snug">
+                {(displayProject as SeedProject).clientName}
+              </p>
+              <Badge
+                variant="outline"
+                className="text-[10px] font-mono py-0.5"
+                style={{
+                  borderColor: "oklch(0.74 0.19 198 / 0.25)",
+                  color: "oklch(0.74 0.19 198 / 0.8)",
+                  background: "oklch(0.74 0.19 198 / 0.07)",
+                }}
+              >
+                {(displayProject as SeedProject).clientIndustry}
+              </Badge>
+            </div>
+          )}
+
+          {/* Client Requirements Panel */}
+          {"clientRequirements" in displayProject && (
+            <div
+              className="glass-panel rounded-xl p-4 mt-4"
+              data-ocid="project.requirements_panel"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <ClipboardList
+                  className="h-3.5 w-3.5"
+                  style={{
+                    color: "oklch(0.74 0.19 198)",
+                    filter: "drop-shadow(0 0 4px oklch(0.74 0.19 198 / 0.5))",
+                  }}
+                />
+                <span
+                  className="text-[11px] font-mono uppercase tracking-[0.18em] font-semibold"
+                  style={{ color: "oklch(0.74 0.19 198)" }}
+                >
+                  Requirements
+                </span>
+              </div>
+              <ul className="flex flex-col gap-2">
+                {(displayProject as SeedProject).clientRequirements.map(
+                  (req, i) => (
+                    <li
+                      key={req}
+                      className="flex items-start gap-2 text-[11px] text-muted-foreground leading-relaxed"
+                      data-ocid={`project.requirement.item.${i + 1}`}
+                    >
+                      <span
+                        className="mt-1.5 h-1 w-1 rounded-full shrink-0"
+                        style={{ background: "oklch(0.74 0.19 198 / 0.5)" }}
+                      />
+                      {req}
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+          )}
         </motion.div>
 
         {/* Logic History Timeline */}

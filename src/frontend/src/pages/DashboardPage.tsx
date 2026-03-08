@@ -2,15 +2,24 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Principal } from "@icp-sdk/core/principal";
 import { Link } from "@tanstack/react-router";
-import { Brain, Clock, FolderOpen, Layers, Plus, Search } from "lucide-react";
+import {
+  Brain,
+  Building2,
+  Clock,
+  FolderOpen,
+  Layers,
+  Plus,
+  Search,
+  Users,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import type { Project } from "../backend.d";
 import { ContextBurstPanel } from "../components/ContextBurstPanel";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { useAppContext } from "../context/AppContext";
+import { type SeedProject, seedProjects } from "../data/seedData";
 import { useGetAllProjects } from "../hooks/useQueries";
 import { useIsAdmin } from "../hooks/useQueries";
 
@@ -35,6 +44,8 @@ function ProjectCard({
   isIncognito: boolean;
 }) {
   const [showBurst, setShowBurst] = useState(false);
+  const seedProject = project as SeedProject;
+  const hasSeedData = "clientName" in project;
 
   return (
     <motion.div
@@ -80,9 +91,44 @@ function ProjectCard({
           >
             {project.name}
           </h3>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed flex-1">
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed flex-1">
             {project.description || "No description provided."}
           </p>
+
+          {/* Client + Team metadata (seed projects only) */}
+          {hasSeedData && (
+            <div className="flex flex-col gap-1 mb-3">
+              <div
+                className="flex items-center gap-1.5 text-[11px]"
+                data-ocid="dashboard.project.client_info"
+              >
+                <Building2
+                  className="h-3 w-3 shrink-0"
+                  style={{ color: "oklch(0.74 0.19 198 / 0.55)" }}
+                />
+                <span className="text-muted-foreground font-mono truncate">
+                  <span style={{ color: "oklch(0.74 0.19 198 / 0.75)" }}>
+                    {seedProject.clientName}
+                  </span>
+                  <span className="text-muted-foreground/60 mx-1">·</span>
+                  {seedProject.clientIndustry}
+                </span>
+              </div>
+              <div
+                className="flex items-center gap-1.5 text-[11px]"
+                data-ocid="dashboard.project.team_info"
+              >
+                <Users
+                  className="h-3 w-3 shrink-0"
+                  style={{ color: "oklch(0.74 0.19 198 / 0.55)" }}
+                />
+                <span className="text-muted-foreground font-mono">
+                  {seedProject.teamMembers.length} team member
+                  {seedProject.teamMembers.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Tags */}
           {project.tags.length > 0 && (
@@ -158,37 +204,6 @@ export function DashboardPage() {
       p.description.toLowerCase().includes(search.toLowerCase()) ||
       p.tags.some((t) => t.toLowerCase().includes(search.toLowerCase())),
   );
-
-  const anon = {} as unknown as Principal;
-  const seedProjects: Project[] = [
-    {
-      id: "seed-1",
-      name: "Platform Architecture Overhaul",
-      description:
-        "Complete re-architecture of the core platform to microservices, addressing scalability bottlenecks that emerged at 10M users.",
-      tags: ["infrastructure", "scalability", "microservices"],
-      createdAt: BigInt(Date.now() - 30 * 24 * 3600 * 1000) * BigInt(1_000_000),
-      createdBy: anon,
-    },
-    {
-      id: "seed-2",
-      name: "Zero-Trust Security Initiative",
-      description:
-        "Implementing zero-trust network architecture across all internal services following Q3 security audit findings.",
-      tags: ["security", "zero-trust", "compliance"],
-      createdAt: BigInt(Date.now() - 14 * 24 * 3600 * 1000) * BigInt(1_000_000),
-      createdBy: anon,
-    },
-    {
-      id: "seed-3",
-      name: "ML Pipeline Redesign",
-      description:
-        "Rebuilding the machine learning data pipeline to reduce training latency from 6 hours to under 45 minutes.",
-      tags: ["machine-learning", "data-pipeline", "performance"],
-      createdAt: BigInt(Date.now() - 7 * 24 * 3600 * 1000) * BigInt(1_000_000),
-      createdBy: anon,
-    },
-  ];
 
   const displayProjects =
     !isLoading && (!projects || projects.length === 0)
