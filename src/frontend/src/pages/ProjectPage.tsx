@@ -1,6 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useParams } from "@tanstack/react-router";
@@ -41,6 +46,8 @@ export function ProjectPage() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  const [hoveredTag, setHoveredTag] = useState<string | null>(null);
+
   const { data: project, isLoading: projectLoading } = useGetProject(id);
   const { data: decisions, isLoading: decisionsLoading } =
     useGetProjectDecisions(id);
@@ -79,6 +86,16 @@ export function ProjectPage() {
       : !decisionsLoading && (!decisions || decisions.length === 0)
         ? seedTagsForProject
         : tags || [];
+
+  // All decisions available in this project (backend + seed fallback merged)
+  const allProjectDecisions =
+    !decisionsLoading && (!decisions || decisions.length === 0)
+      ? projectSeedDecisions
+      : [...(decisions || []), ...projectSeedDecisions];
+
+  function getDecisionsForTag(tag: string) {
+    return allProjectDecisions.filter((d) => d.tags.includes(tag));
+  }
 
   if (projectLoading) {
     return (
@@ -224,45 +241,196 @@ export function ProjectPage() {
             ) : (
               <ScrollArea className="max-h-64">
                 <div className="flex flex-col gap-1">
-                  {allTags.map((tag) => (
-                    <button
-                      type="button"
-                      key={tag}
-                      onClick={() =>
-                        setActiveTag((prev) => (prev === tag ? null : tag))
-                      }
-                      data-ocid="project.keyword_tab"
-                      className={`w-full text-left px-3 py-2 rounded-lg text-[12px] font-mono transition-all duration-200 flex items-center gap-2 ${
-                        activeTag === tag
-                          ? "pulse-glow"
-                          : "hover:bg-primary/8 border border-transparent text-muted-foreground hover:text-foreground/80"
-                      }`}
-                      style={
-                        activeTag === tag
-                          ? {
-                              background: "oklch(0.74 0.19 198 / 0.12)",
-                              border: "1px solid oklch(0.74 0.19 198 / 0.4)",
-                              color: "oklch(0.74 0.19 198)",
+                  {allTags.map((tag) => {
+                    const tagDecisions = getDecisionsForTag(tag);
+                    const count = tagDecisions.length;
+                    return (
+                      <Popover key={tag} open={hoveredTag === tag}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveTag((prev) =>
+                                prev === tag ? null : tag,
+                              )
                             }
-                          : {}
-                      }
-                    >
-                      <div
-                        className="h-1.5 w-1.5 rounded-full shrink-0 transition-all duration-200"
-                        style={{
-                          background:
-                            activeTag === tag
-                              ? "oklch(0.74 0.19 198)"
-                              : "oklch(0.74 0.19 198 / 0.3)",
-                          boxShadow:
-                            activeTag === tag
-                              ? "0 0 6px oklch(0.74 0.19 198 / 0.7)"
-                              : "none",
-                        }}
-                      />
-                      {tag}
-                    </button>
-                  ))}
+                            onMouseEnter={() => setHoveredTag(tag)}
+                            onMouseLeave={() => setHoveredTag(null)}
+                            data-ocid="project.keyword_tab"
+                            className={`w-full text-left px-3 py-2 rounded-lg text-[12px] font-mono transition-all duration-200 flex items-center gap-2 ${
+                              activeTag === tag
+                                ? "pulse-glow"
+                                : "hover:bg-primary/8 border border-transparent text-muted-foreground hover:text-foreground/80"
+                            }`}
+                            style={
+                              activeTag === tag
+                                ? {
+                                    background: "oklch(0.74 0.19 198 / 0.12)",
+                                    border:
+                                      "1px solid oklch(0.74 0.19 198 / 0.4)",
+                                    color: "oklch(0.74 0.19 198)",
+                                  }
+                                : {}
+                            }
+                          >
+                            <div
+                              className="h-1.5 w-1.5 rounded-full shrink-0 transition-all duration-200"
+                              style={{
+                                background:
+                                  activeTag === tag
+                                    ? "oklch(0.74 0.19 198)"
+                                    : "oklch(0.74 0.19 198 / 0.3)",
+                                boxShadow:
+                                  activeTag === tag
+                                    ? "0 0 6px oklch(0.74 0.19 198 / 0.7)"
+                                    : "none",
+                              }}
+                            />
+                            <span className="flex-1 truncate">{tag}</span>
+                            {count > 0 && (
+                              <span
+                                className="ml-auto shrink-0 text-[10px] font-mono px-1.5 py-0.5 rounded"
+                                style={{
+                                  background: "oklch(0.74 0.19 198 / 0.1)",
+                                  color: "oklch(0.74 0.19 198 / 0.65)",
+                                  border:
+                                    "1px solid oklch(0.74 0.19 198 / 0.18)",
+                                }}
+                              >
+                                {count}
+                              </span>
+                            )}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          side="right"
+                          align="start"
+                          sideOffset={10}
+                          onMouseEnter={() => setHoveredTag(tag)}
+                          onMouseLeave={() => setHoveredTag(null)}
+                          data-ocid="project.keyword_popover"
+                          className="p-0 overflow-hidden"
+                          style={{
+                            background: "oklch(0.12 0.02 240 / 0.95)",
+                            border: "1px solid oklch(0.74 0.19 198 / 0.25)",
+                            backdropFilter: "blur(24px)",
+                            WebkitBackdropFilter: "blur(24px)",
+                            maxWidth: "320px",
+                            width: "300px",
+                            boxShadow:
+                              "0 8px 32px oklch(0 0 0 / 0.6), 0 0 0 1px oklch(0.74 0.19 198 / 0.08) inset",
+                          }}
+                        >
+                          {/* Header */}
+                          <div
+                            className="px-4 py-3"
+                            style={{
+                              borderBottom:
+                                "1px solid oklch(0.74 0.19 198 / 0.12)",
+                              background: "oklch(0.74 0.19 198 / 0.05)",
+                            }}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <div
+                                  className="h-1.5 w-1.5 rounded-full shrink-0"
+                                  style={{
+                                    background: "oklch(0.74 0.19 198)",
+                                    boxShadow:
+                                      "0 0 6px oklch(0.74 0.19 198 / 0.7)",
+                                  }}
+                                />
+                                <span
+                                  className="font-mono text-[12px] font-semibold truncate"
+                                  style={{ color: "oklch(0.74 0.19 198)" }}
+                                >
+                                  #{tag}
+                                </span>
+                              </div>
+                              <span
+                                className="text-[10px] font-mono shrink-0"
+                                style={{ color: "oklch(0.74 0.19 198 / 0.55)" }}
+                              >
+                                {count} decision{count !== 1 ? "s" : ""}
+                              </span>
+                            </div>
+                            <p
+                              className="text-[10px] font-mono mt-0.5"
+                              style={{ color: "oklch(0.65 0.01 240 / 0.6)" }}
+                            >
+                              Logic history for this keyword
+                            </p>
+                          </div>
+
+                          {/* Decision list */}
+                          <div
+                            className="overflow-y-auto"
+                            style={{ maxHeight: "248px" }}
+                          >
+                            {count === 0 ? (
+                              <div className="px-4 py-6 text-center">
+                                <p
+                                  className="text-[11px] font-mono"
+                                  style={{
+                                    color: "oklch(0.55 0.01 240 / 0.7)",
+                                  }}
+                                >
+                                  No decisions for this tag yet
+                                </p>
+                              </div>
+                            ) : (
+                              tagDecisions.map((decision, dIdx) => (
+                                <div key={decision.id}>
+                                  {dIdx > 0 && (
+                                    <div
+                                      style={{
+                                        height: "1px",
+                                        background:
+                                          "oklch(0.74 0.19 198 / 0.08)",
+                                        margin: "0 16px",
+                                      }}
+                                    />
+                                  )}
+                                  <div className="px-4 py-3">
+                                    <p
+                                      className="text-[11px] font-semibold leading-snug mb-1"
+                                      style={{
+                                        color: "oklch(0.88 0.02 240)",
+                                      }}
+                                    >
+                                      {decision.title}
+                                    </p>
+                                    <p
+                                      className="text-[10px] leading-relaxed mb-1"
+                                      style={{
+                                        color: "oklch(0.65 0.01 240 / 0.85)",
+                                      }}
+                                    >
+                                      {decision.reasoning.length > 140
+                                        ? `${decision.reasoning.slice(0, 140)}...`
+                                        : decision.reasoning}
+                                    </p>
+                                    {decision.outcome && (
+                                      <p
+                                        className="text-[10px] leading-relaxed"
+                                        style={{
+                                          color: "oklch(0.55 0.01 240 / 0.7)",
+                                        }}
+                                      >
+                                        {decision.outcome.length > 90
+                                          ? `${decision.outcome.slice(0, 90)}...`
+                                          : decision.outcome}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    );
+                  })}
                 </div>
               </ScrollArea>
             )}

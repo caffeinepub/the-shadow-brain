@@ -3,7 +3,6 @@ import List "mo:core/List";
 import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Array "mo:core/Array";
-import Iter "mo:core/Iter";
 import Int "mo:core/Int";
 import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
@@ -61,27 +60,30 @@ actor {
     createdBy : Principal;
   };
 
+  var projects : Map.Map<Text, Project> = Map.empty<Text, Project>();
+  var decisions : Map.Map<Text, Decision> = Map.empty<Text, Decision>();
+  var contextFragments : Map.Map<Text, ContextFragment> = Map.empty<Text, ContextFragment>();
+  var userProfiles : Map.Map<Principal, UserProfile> = Map.empty<Principal, UserProfile>();
+
   public type UserProfile = {
     name : Text;
   };
-
-  let projects = Map.empty<Text, Project>();
-  let decisions = Map.empty<Text, Decision>();
-  let contextFragments = Map.empty<Text, ContextFragment>();
-  let userProfiles = Map.empty<Principal, UserProfile>();
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
   // User Profile Management
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Anonymous users cannot access profiles");
     };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Anonymous users cannot access profiles");
+    };
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
@@ -89,8 +91,8 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Anonymous users cannot save profiles");
     };
     userProfiles.add(caller, profile);
   };

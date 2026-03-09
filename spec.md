@@ -1,34 +1,21 @@
 # The Shadow Brain
 
 ## Current State
-- Dashboard shows 3 seed projects (static fallback when no real data exists)
-- Each seed project has a name, description, and 2-3 tags
-- Project page shows 3 seed decisions per project
-- Keyword Pulse sidebar shows tags from decisions
-- Context Burst panel shows high-impact decisions on hover
-- No project team members, client info, or client requirements data
+Full-stack app with glassmorphism UI. Has 10 detailed projects with keyword pulse, logic history, decisions, context fragments, and team/client data. Profile saving is broken because `saveCallerUserProfile` and `getCallerUserProfile` require the caller to have the `#user` role, but newly registered or guest principals fail the permission check before they can save a profile.
 
 ## Requested Changes (Diff)
 
 ### Add
-- 10 richly detailed seed projects on the DashboardPage (replacing current 3)
-- Each project includes: name, description, tags (keyword impulses), team members list, client name, client industry, and client requirements summary
-- Extended seed decisions per project (3 decisions each) with matching tags
-- A ProjectDetailOverlay or expanded ProjectPage sidebar showing: Team Members section, Client Info section, Client Requirements section
-- Seed data file (`seedData.ts`) to centralize all mock content
+- Nothing new to add.
 
 ### Modify
-- DashboardPage: use 10 new seed projects
-- ProjectPage: render team members, client info, and client requirements in the sidebar alongside Keyword Pulse
-- ProjectCard: show team member count and client name as metadata
+- `saveCallerUserProfile`: Change authorization check from `AccessControl.hasPermission(accessControlState, caller, #user)` to simply `not caller.isAnonymous()` -- any authenticated (non-anonymous) principal should be able to save their own profile.
+- `getCallerUserProfile`: Same change -- only reject anonymous callers, not unregistered/guest principals.
+- `getUserProfile`: Same -- reject anonymous callers instead of requiring user role.
 
 ### Remove
-- Old 3-project seed arrays inline in DashboardPage and ProjectPage
+- Nothing to remove.
 
 ## Implementation Plan
-1. Create `src/frontend/src/data/seedData.ts` with 10 projects, each containing: id, name, description, tags, teamMembers[], clientName, clientIndustry, clientRequirements, and 3 decisions with tags
-2. Update `DashboardPage.tsx` to import and use the new seed projects; show client name and team size on ProjectCard
-3. Update `ProjectPage.tsx` to:
-   - Import seed decisions from seedData for the active project
-   - Add Team Members, Client Info, and Client Requirements panels in the sidebar below Keyword Pulse
-4. Ensure all new UI surfaces have deterministic `data-ocid` markers
+1. Regenerate Motoko backend with the corrected profile authorization logic (allow any non-anonymous caller to read/write their own profile).
+2. No frontend changes needed -- the existing ProfileModal and useQueries hooks are correct.
