@@ -1,11 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useParams } from "@tanstack/react-router";
@@ -14,10 +9,12 @@ import {
   Building2,
   ClipboardList,
   Clock,
+  ExternalLink,
   Filter,
   GitBranch,
   Plus,
   Search,
+  Star,
   Tag,
   Users,
   X,
@@ -25,6 +22,7 @@ import {
 import { motion } from "motion/react";
 import { useState } from "react";
 import { DecisionCard } from "../components/DecisionCard";
+import { KeywordLogicDialog } from "../components/KeywordLogicDialog";
 import { NewDecisionModal } from "../components/NewDecisionModal";
 import { useAppContext } from "../context/AppContext";
 import {
@@ -39,14 +37,45 @@ import {
   useIsAdmin,
 } from "../hooks/useQueries";
 
+function SatisfactionStars({ rating }: { rating: number }) {
+  const full = Math.floor(rating);
+  const partial = rating - full;
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Star
+            key={n}
+            className="h-3.5 w-3.5"
+            style={{
+              color:
+                n <= full
+                  ? "oklch(0.82 0.18 80)"
+                  : partial > 0 && n === full + 1
+                    ? "oklch(0.82 0.18 80 / 0.5)"
+                    : "oklch(0.4 0.01 240 / 0.4)",
+              fill: n <= full ? "oklch(0.82 0.18 80)" : "transparent",
+            }}
+          />
+        ))}
+      </div>
+      <span
+        className="text-[12px] font-mono font-semibold"
+        style={{ color: "oklch(0.82 0.18 80)" }}
+      >
+        {rating}
+      </span>
+    </div>
+  );
+}
+
 export function ProjectPage() {
   const { id } = useParams({ from: "/project/$id" });
   const { incognito } = useAppContext();
   const [newDecisionOpen, setNewDecisionOpen] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-
-  const [hoveredTag, setHoveredTag] = useState<string | null>(null);
+  const [dialogTag, setDialogTag] = useState<string | null>(null);
 
   const { data: project, isLoading: projectLoading } = useGetProject(id);
   const { data: decisions, isLoading: decisionsLoading } =
@@ -79,7 +108,6 @@ export function ProjectPage() {
   const seedTagsForProject = Array.from(
     new Set(projectSeedDecisions.flatMap((d) => d.tags)),
   );
-
   const allTags =
     tags && tags.length > 0
       ? tags
@@ -87,15 +115,10 @@ export function ProjectPage() {
         ? seedTagsForProject
         : tags || [];
 
-  // All decisions available in this project (backend + seed fallback merged)
   const allProjectDecisions =
     !decisionsLoading && (!decisions || decisions.length === 0)
       ? projectSeedDecisions
       : [...(decisions || []), ...projectSeedDecisions];
-
-  function getDecisionsForTag(tag: string) {
-    return allProjectDecisions.filter((d) => d.tags.includes(tag));
-  }
 
   if (projectLoading) {
     return (
@@ -118,6 +141,17 @@ export function ProjectPage() {
     project ||
     (seedProjects.find((p) => p.id === id) as SeedProject | undefined) ||
     seedProjects[0];
+
+  // Previous client projects (same client or same industry)
+  const currentSeedProject = seedProjects.find((p) => p.id === id);
+  const previousClientProjects = currentSeedProject
+    ? seedProjects.filter(
+        (p) =>
+          p.id !== id &&
+          (p.clientName === currentSeedProject.clientName ||
+            p.clientIndustry === currentSeedProject.clientIndustry),
+      )
+    : [];
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -194,59 +228,83 @@ export function ProjectPage() {
 
       {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        {/* Keyword Pulse Sidebar */}
+        {/* Sidebar */}
         <motion.div
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
         >
+          {/* Keyword Pulse */}
           <div
-            className="glass-panel rounded-xl p-4 sticky top-24"
+            className="glass-panel rounded-xl overflow-hidden sticky top-24"
             data-ocid="project.keyword_panel"
           >
-            <div className="flex items-center gap-2 mb-1.5">
-              <Tag
-                className="h-3.5 w-3.5"
+            {/* Panel image */}
+            <div className="relative h-20 overflow-hidden">
+              <img
+                src="/assets/generated/feature-keyword-pulse.dim_600x400.jpg"
+                alt=""
+                className="w-full h-full object-cover"
+                style={{ opacity: 0.45, filter: "saturate(1.4)" }}
+              />
+              <div
+                className="absolute inset-0"
                 style={{
-                  color: "oklch(0.74 0.19 198)",
-                  filter: "drop-shadow(0 0 4px oklch(0.74 0.19 198 / 0.5))",
+                  background:
+                    "linear-gradient(to bottom, oklch(0 0 0 / 0.1) 0%, oklch(0.12 0.02 258 / 0.9) 100%)",
                 }}
               />
-              <span
-                className="text-[11px] font-mono uppercase tracking-[0.18em] font-semibold"
-                style={{ color: "oklch(0.74 0.19 198)" }}
-              >
-                Keyword Pulse
-              </span>
-              {activeTag && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setActiveTag(null)}
-                  data-ocid="project.filter.close_button"
-                  className="h-5 w-5 ml-auto text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
+              <div className="absolute inset-0 flex items-end pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <Tag
+                    className="h-3.5 w-3.5"
+                    style={{
+                      color: "oklch(0.74 0.19 198)",
+                      filter: "drop-shadow(0 0 4px oklch(0.74 0.19 198 / 0.5))",
+                    }}
+                  />
+                  <span
+                    className="text-[11px] font-mono uppercase tracking-[0.18em] font-semibold"
+                    style={{ color: "oklch(0.74 0.19 198)" }}
+                  >
+                    Keyword Pulse
+                  </span>
+                  {activeTag && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setActiveTag(null)}
+                      data-ocid="project.filter.close_button"
+                      className="h-5 w-5 ml-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-            <p className="text-[10px] text-muted-foreground mb-3.5 font-mono">
-              Click a tag to filter decisions
-            </p>
 
-            {allTags.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">
-                No tags yet
+            <div className="p-4">
+              <p className="text-[10px] text-muted-foreground mb-3 font-mono">
+                Click a tag to filter ·{" "}
+                <span style={{ color: "oklch(0.74 0.19 198 / 0.7)" }}>
+                  hover to preview full history
+                </span>
               </p>
-            ) : (
-              <ScrollArea className="max-h-64">
-                <div className="flex flex-col gap-1">
-                  {allTags.map((tag) => {
-                    const tagDecisions = getDecisionsForTag(tag);
-                    const count = tagDecisions.length;
-                    return (
-                      <Popover key={tag} open={hoveredTag === tag}>
-                        <PopoverTrigger asChild>
+
+              {allTags.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">
+                  No tags yet
+                </p>
+              ) : (
+                <ScrollArea className="max-h-56">
+                  <div className="flex flex-col gap-1">
+                    {allTags.map((tag) => {
+                      const count = allProjectDecisions.filter((d) =>
+                        d.tags.includes(tag),
+                      ).length;
+                      return (
+                        <div key={tag} className="flex gap-1">
                           <button
                             type="button"
                             onClick={() =>
@@ -254,10 +312,8 @@ export function ProjectPage() {
                                 prev === tag ? null : tag,
                               )
                             }
-                            onMouseEnter={() => setHoveredTag(tag)}
-                            onMouseLeave={() => setHoveredTag(null)}
                             data-ocid="project.keyword_tab"
-                            className={`w-full text-left px-3 py-2 rounded-lg text-[12px] font-mono transition-all duration-200 flex items-center gap-2 ${
+                            className={`flex-1 text-left px-3 py-2 rounded-lg text-[12px] font-mono transition-all duration-200 flex items-center gap-2 ${
                               activeTag === tag
                                 ? "pulse-glow"
                                 : "hover:bg-primary/8 border border-transparent text-muted-foreground hover:text-foreground/80"
@@ -274,7 +330,7 @@ export function ProjectPage() {
                             }
                           >
                             <div
-                              className="h-1.5 w-1.5 rounded-full shrink-0 transition-all duration-200"
+                              className="h-1.5 w-1.5 rounded-full shrink-0"
                               style={{
                                 background:
                                   activeTag === tag
@@ -301,159 +357,44 @@ export function ProjectPage() {
                               </span>
                             )}
                           </button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          side="right"
-                          align="start"
-                          sideOffset={10}
-                          onMouseEnter={() => setHoveredTag(tag)}
-                          onMouseLeave={() => setHoveredTag(null)}
-                          data-ocid="project.keyword_popover"
-                          className="p-0 overflow-hidden"
-                          style={{
-                            background: "oklch(0.12 0.02 240 / 0.95)",
-                            border: "1px solid oklch(0.74 0.19 198 / 0.25)",
-                            backdropFilter: "blur(24px)",
-                            WebkitBackdropFilter: "blur(24px)",
-                            maxWidth: "320px",
-                            width: "300px",
-                            boxShadow:
-                              "0 8px 32px oklch(0 0 0 / 0.6), 0 0 0 1px oklch(0.74 0.19 198 / 0.08) inset",
-                          }}
-                        >
-                          {/* Header */}
-                          <div
-                            className="px-4 py-3"
-                            style={{
-                              borderBottom:
-                                "1px solid oklch(0.74 0.19 198 / 0.12)",
-                              background: "oklch(0.74 0.19 198 / 0.05)",
-                            }}
+                          {/* Open full logic dialog */}
+                          <button
+                            type="button"
+                            onClick={() => setDialogTag(tag)}
+                            title="View full logic history"
+                            data-ocid="project.keyword_dialog_open"
+                            className="px-2 rounded-lg transition-all text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            style={{ fontSize: "10px" }}
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <div
-                                  className="h-1.5 w-1.5 rounded-full shrink-0"
-                                  style={{
-                                    background: "oklch(0.74 0.19 198)",
-                                    boxShadow:
-                                      "0 0 6px oklch(0.74 0.19 198 / 0.7)",
-                                  }}
-                                />
-                                <span
-                                  className="font-mono text-[12px] font-semibold truncate"
-                                  style={{ color: "oklch(0.74 0.19 198)" }}
-                                >
-                                  #{tag}
-                                </span>
-                              </div>
-                              <span
-                                className="text-[10px] font-mono shrink-0"
-                                style={{ color: "oklch(0.74 0.19 198 / 0.55)" }}
-                              >
-                                {count} decision{count !== 1 ? "s" : ""}
-                              </span>
-                            </div>
-                            <p
-                              className="text-[10px] font-mono mt-0.5"
-                              style={{ color: "oklch(0.65 0.01 240 / 0.6)" }}
-                            >
-                              Logic history for this keyword
-                            </p>
-                          </div>
+                            <ExternalLink className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
 
-                          {/* Decision list */}
-                          <div
-                            className="overflow-y-auto"
-                            style={{ maxHeight: "248px" }}
-                          >
-                            {count === 0 ? (
-                              <div className="px-4 py-6 text-center">
-                                <p
-                                  className="text-[11px] font-mono"
-                                  style={{
-                                    color: "oklch(0.55 0.01 240 / 0.7)",
-                                  }}
-                                >
-                                  No decisions for this tag yet
-                                </p>
-                              </div>
-                            ) : (
-                              tagDecisions.map((decision, dIdx) => (
-                                <div key={decision.id}>
-                                  {dIdx > 0 && (
-                                    <div
-                                      style={{
-                                        height: "1px",
-                                        background:
-                                          "oklch(0.74 0.19 198 / 0.08)",
-                                        margin: "0 16px",
-                                      }}
-                                    />
-                                  )}
-                                  <div className="px-4 py-3">
-                                    <p
-                                      className="text-[11px] font-semibold leading-snug mb-1"
-                                      style={{
-                                        color: "oklch(0.88 0.02 240)",
-                                      }}
-                                    >
-                                      {decision.title}
-                                    </p>
-                                    <p
-                                      className="text-[10px] leading-relaxed mb-1"
-                                      style={{
-                                        color: "oklch(0.65 0.01 240 / 0.85)",
-                                      }}
-                                    >
-                                      {decision.reasoning.length > 140
-                                        ? `${decision.reasoning.slice(0, 140)}...`
-                                        : decision.reasoning}
-                                    </p>
-                                    {decision.outcome && (
-                                      <p
-                                        className="text-[10px] leading-relaxed"
-                                        style={{
-                                          color: "oklch(0.55 0.01 240 / 0.7)",
-                                        }}
-                                      >
-                                        {decision.outcome.length > 90
-                                          ? `${decision.outcome.slice(0, 90)}...`
-                                          : decision.outcome}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            )}
-
-            {activeTag && (
-              <div
-                className="mt-3 pt-3"
-                style={{ borderTop: "1px solid oklch(0.74 0.19 198 / 0.12)" }}
-              >
+              {activeTag && (
                 <div
-                  className="flex items-center gap-1.5 text-[11px] font-mono"
-                  style={{ color: "oklch(0.74 0.19 198 / 0.9)" }}
+                  className="mt-3 pt-3"
+                  style={{ borderTop: "1px solid oklch(0.74 0.19 198 / 0.12)" }}
                 >
-                  <Filter className="h-3 w-3" />
-                  <span>
-                    Filtering: <strong>{activeTag}</strong>
-                  </span>
+                  <div
+                    className="flex items-center gap-1.5 text-[11px] font-mono"
+                    style={{ color: "oklch(0.74 0.19 198 / 0.9)" }}
+                  >
+                    <Filter className="h-3 w-3" />
+                    <span>
+                      Filtering: <strong>{activeTag}</strong>
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Team Members Panel */}
+          {/* Team Members */}
           {"teamMembers" in displayProject && (
             <div
               className="glass-panel rounded-xl p-4 mt-4"
@@ -495,7 +436,7 @@ export function ProjectPage() {
             </div>
           )}
 
-          {/* Client Info Panel */}
+          {/* Client Info */}
           {"clientName" in displayProject && (
             <div
               className="glass-panel rounded-xl p-4 mt-4"
@@ -530,10 +471,25 @@ export function ProjectPage() {
               >
                 {(displayProject as SeedProject).clientIndustry}
               </Badge>
+              {"clientSatisfactionRating" in displayProject && (
+                <div
+                  className="mt-3 pt-3"
+                  style={{ borderTop: "1px solid oklch(0.74 0.19 198 / 0.1)" }}
+                >
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">
+                    Our Satisfaction Rating
+                  </p>
+                  <SatisfactionStars
+                    rating={
+                      (displayProject as SeedProject).clientSatisfactionRating
+                    }
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Client Requirements Panel */}
+          {/* Client Requirements */}
           {"clientRequirements" in displayProject && (
             <div
               className="glass-panel rounded-xl p-4 mt-4"
@@ -596,7 +552,6 @@ export function ProjectPage() {
             </div>
           </div>
 
-          {/* Search */}
           <div className="relative mb-5">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
@@ -608,7 +563,6 @@ export function ProjectPage() {
             />
           </div>
 
-          {/* Decisions List */}
           {decisionsLoading ? (
             <div className="space-y-4" data-ocid="project.decision_list">
               {[1, 2, 3].map((i) => (
@@ -648,7 +602,7 @@ export function ProjectPage() {
             </div>
           ) : (
             <div
-              className={`${incognito ? "incognito-blur" : ""}`}
+              className={incognito ? "incognito-blur" : ""}
               data-ocid="project.decision_list"
             >
               {displayDecisions.map((decision, idx) => (
@@ -662,6 +616,85 @@ export function ProjectPage() {
               ))}
             </div>
           )}
+
+          {/* Previous Work for Client */}
+          {previousClientProjects.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mt-10"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Building2
+                  className="h-4 w-4"
+                  style={{ color: "oklch(0.74 0.19 198)" }}
+                />
+                <h2 className="font-display text-lg font-semibold">
+                  Previous Work
+                  {currentSeedProject && (
+                    <span className="font-normal text-muted-foreground text-base ml-2">
+                      — {currentSeedProject.clientIndustry}
+                    </span>
+                  )}
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {previousClientProjects.map((prev, idx) => (
+                  <motion.div
+                    key={prev.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45 + idx * 0.07 }}
+                    data-ocid={`previous_work.item.${idx + 1}`}
+                  >
+                    <Link to="/project/$id" params={{ id: prev.id }}>
+                      <div
+                        className="rounded-xl p-4 h-full transition-all duration-200 hover:scale-[1.01] cursor-pointer"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, oklch(0.14 0.02 258 / 0.9) 0%, oklch(0.12 0.018 265 / 0.95) 100%)",
+                          border: "1px solid oklch(0.74 0.19 198 / 0.15)",
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h4 className="font-display font-semibold text-[13px] text-foreground leading-snug line-clamp-2">
+                            {prev.name}
+                          </h4>
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/50" />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
+                          {prev.description}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-mono py-0"
+                              style={{
+                                borderColor: "oklch(0.74 0.19 198 / 0.2)",
+                                color: "oklch(0.74 0.19 198 / 0.7)",
+                              }}
+                            >
+                              {prev.clientIndustry}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <SatisfactionStars
+                              rating={prev.clientSatisfactionRating}
+                            />
+                            <span className="text-[9px] font-mono text-muted-foreground/50">
+                              client satisfaction
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -669,6 +702,13 @@ export function ProjectPage() {
         open={newDecisionOpen}
         onClose={() => setNewDecisionOpen(false)}
         projectId={id}
+      />
+
+      {/* Keyword Logic Dialog */}
+      <KeywordLogicDialog
+        tag={dialogTag}
+        decisions={allProjectDecisions}
+        onClose={() => setDialogTag(null)}
       />
     </main>
   );

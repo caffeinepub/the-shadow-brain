@@ -6,6 +6,7 @@ export interface SeedProject extends Project {
   clientName: string;
   clientIndustry: string;
   clientRequirements: string[];
+  clientSatisfactionRating: number;
 }
 
 export interface SeedDecision extends Decision {}
@@ -41,6 +42,7 @@ export const seedProjects: SeedProject[] = [
       "Sub-100ms API latency at p99",
       "Horizontal scaling to support 50M+ users",
     ],
+    clientSatisfactionRating: 4.8,
   },
   {
     id: "seed-2",
@@ -64,6 +66,7 @@ export const seedProjects: SeedProject[] = [
       "Full immutable audit trail for all service calls",
       "mTLS enforcement on every internal communication",
     ],
+    clientSatisfactionRating: 4.9,
   },
   {
     id: "seed-3",
@@ -93,6 +96,7 @@ export const seedProjects: SeedProject[] = [
       "End-to-end model lineage tracking from data to artifact",
       "HIPAA-compliant data handling and audit logging",
     ],
+    clientSatisfactionRating: 4.7,
   },
   {
     id: "seed-4",
@@ -116,6 +120,7 @@ export const seedProjects: SeedProject[] = [
       "Drag-and-drop custom KPI widget builder",
       "One-click CSV and Excel export for any chart",
     ],
+    clientSatisfactionRating: 4.6,
   },
   {
     id: "seed-5",
@@ -139,6 +144,7 @@ export const seedProjects: SeedProject[] = [
       "Accessibility at WCAG 2.1 AA — serving citizens with disabilities",
       "Privacy by design — no PII stored on chain",
     ],
+    clientSatisfactionRating: 4.5,
   },
   {
     id: "seed-6",
@@ -162,6 +168,7 @@ export const seedProjects: SeedProject[] = [
       "Full offline mode for regions with intermittent connectivity",
       "Sub-2 second end-to-end transaction confirmation",
     ],
+    clientSatisfactionRating: 4.8,
   },
   {
     id: "seed-7",
@@ -185,6 +192,7 @@ export const seedProjects: SeedProject[] = [
       "Predictive delay alerts with 85%+ accuracy",
       "Strict tenant isolation in a multi-tenant SaaS architecture",
     ],
+    clientSatisfactionRating: 4.4,
   },
   {
     id: "seed-8",
@@ -208,6 +216,7 @@ export const seedProjects: SeedProject[] = [
       "Seamless handoff to human agents with full context transfer",
       "Native Zendesk and Salesforce integrations",
     ],
+    clientSatisfactionRating: 4.9,
   },
   {
     id: "seed-9",
@@ -231,6 +240,7 @@ export const seedProjects: SeedProject[] = [
       "Patient-controlled consent management portal",
       "99.9% uptime SLA with zero-downtime deployments",
     ],
+    clientSatisfactionRating: 4.7,
   },
   {
     id: "seed-10",
@@ -260,6 +270,7 @@ export const seedProjects: SeedProject[] = [
       "LTI 1.3 integration with major LMS platforms (Canvas, Moodle, Blackboard)",
       "Full accessibility support for 15+ interface languages",
     ],
+    clientSatisfactionRating: 4.6,
   },
 ];
 

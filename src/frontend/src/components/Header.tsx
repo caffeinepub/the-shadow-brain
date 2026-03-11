@@ -28,7 +28,7 @@ import { useGetUserProfile, useIsAdmin } from "../hooks/useQueries";
 import { ProfileModal } from "./ProfileModal";
 
 export function Header() {
-  const { incognito, toggleIncognito } = useAppContext();
+  const { incognito, toggleIncognito, localLogout } = useAppContext();
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
   const { data: profile } = useGetUserProfile();
   const { data: isAdmin } = useIsAdmin();
@@ -195,7 +195,10 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 bg-border/40" />
                     <DropdownMenuItem
-                      onClick={clear}
+                      onClick={() => {
+                        clear();
+                        localLogout();
+                      }}
                       data-ocid="nav.logout_button"
                       className="cursor-pointer rounded-lg text-sm gap-2 text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive"
                     >

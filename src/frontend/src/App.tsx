@@ -8,27 +8,20 @@ import {
 } from "@tanstack/react-router";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
-import { AppProvider } from "./context/AppContext";
+import { AppProvider, useAppContext } from "./context/AppContext";
 import { DashboardPage } from "./pages/DashboardPage";
+import { LoginPage } from "./pages/LoginPage";
 import { ProjectPage } from "./pages/ProjectPage";
 
 // ── Routes ────────────────────────────────────────────────────────
 
 const rootRoute = createRootRoute({
   component: () => (
-    <AppProvider>
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <Outlet />
-        <Footer />
-      </div>
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          className: "glass-panel border-primary/20 font-body text-sm",
-        }}
-      />
-    </AppProvider>
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <Outlet />
+      <Footer />
+    </div>
   ),
 });
 
@@ -54,8 +47,30 @@ declare module "@tanstack/react-router" {
   }
 }
 
+// ── Gated App ────────────────────────────────────────────────────
+
+function GatedApp() {
+  const { isLocallyLoggedIn } = useAppContext();
+  if (!isLocallyLoggedIn) return <LoginPage />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          className: "glass-panel border-primary/20 font-body text-sm",
+        }}
+      />
+    </>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AppProvider>
+      <GatedApp />
+    </AppProvider>
+  );
 }

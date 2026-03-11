@@ -60,6 +60,23 @@ export function ContextBurstPanel({
               }}
             />
 
+            {/* Feature image strip */}
+            <div className="relative -mx-4 -mt-4 mb-3 h-16 overflow-hidden rounded-t-[14px]">
+              <img
+                src="/assets/generated/feature-context-burst.dim_600x400.jpg"
+                alt=""
+                className="w-full h-full object-cover"
+                style={{ opacity: 0.5, filter: "saturate(1.3)" }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(to bottom, oklch(0 0 0 / 0.05) 0%, oklch(0.17 0.02 258 / 0.85) 100%)",
+                }}
+              />
+            </div>
+
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
               <div
